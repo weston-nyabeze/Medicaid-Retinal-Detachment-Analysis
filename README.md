@@ -117,7 +117,7 @@ After adjusting for all predictors, the following associations were observed:
 
 **Forest Plot – Adjusted Odds Ratios:**
 
-![Forest Plot: Adjusted Odds Ratios for Retinal Detachment](figures/forest_plot_odds_ratios.png)
+![Forest Plot: Adjusted Odds Ratios for Retinal Detachment](https://github.com/weston-nyabeze/Medicaid-Retinal-Detachment-Analysis/blob/main/forest_plot_odds_ratios.png)
 
 **Interpretation:** 
 - Points to the right of the vertical dashed line (OR = 1) indicate increased odds of retinal detachment.
@@ -133,7 +133,7 @@ After adjusting for all predictors, the following associations were observed:
 
 The model's ability to discriminate between cases with and without retinal detachment was evaluated using the ROC curve and AUC.
 
-![ROC Curve: Retinal Detachment Prediction Model](figures/roc_curve.png)
+![ROC Curve: Retinal Detachment Prediction Model](https://github.com/weston-nyabeze/Medicaid-Retinal-Detachment-Analysis/blob/main/roc_curve.png)
 
 | Metric | Value |
 |--------|-------|
