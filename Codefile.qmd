@@ -1,0 +1,396 @@
+---
+title: "Portifolio 3"
+author: "Weston Nyabeze"
+format: html
+editor: visual
+---
+
+## Predictors of Retinal Detachment Diagnosis in a Large Medicaid Population: Examining the Contributions of Age, Diabetes, Hypertension, and Demographic Factors Using Administrative Claims Data (VEHSS Medicaid MAX, 2016–2019)
+
+**Research Question:**\
+In Medicaid administrative claims data, what is the relative importance of age, diabetes, hypertension, and demographic characteristics in predicting retinal detachment diagnosis?
+
+```{r}
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(summarytools)
+library(car)
+library(pROC)
+library(ResourceSelection)
+library(tidyr)
+
+```
+
+Data importation
+
+```{r}
+library(readr)
+
+Medicaid_Claims_MAX_Vision_and_Eye_Health_Surveillance <- read_csv("C:/Users/nyabe/Downloads/Medicaid_Claims__MAX__-_Vision_and_Eye_Health_Surveillance.csv")
+```
+
+You can add options to executable code like this
+
+```{r}
+str(Medicaid_Claims_MAX_Vision_and_Eye_Health_Surveillance)
+```
+
+## Data Selection and Preparation
+
+## Filter to Analytic Population
+
+We filter the data to include only records with complete age, sex, and race/ethnicity categories.
+
+```{r}
+medicaid_claims <- Medicaid_Claims_MAX_Vision_and_Eye_Health_Surveillance %>%
+  filter(
+    Age %in% c("0-17 years", "18-39 years", "40-64 years", "65-84 years", "85 years and older"),
+    Sex %in% c("Male", "Female"),
+    RaceEthnicity %in% c(
+      "Asian", "Black, non-Hispanic", "Hispanic, any race",
+      "North American Native", "White, non-Hispanic", "Other", "Unknown"
+    )
+  )
+
+cat("Analytic population size:", nrow(medicaid_claims), "records\n") 
+
+
+```
+
+## Create Binary Outcome and Risk Indicators
+
+We create binary variables for the outcome (retinal detachment) and key risk factors (diabetes, hypertension, major ocular conditions).
+
+```{r}
+medicaid_claims <- medicaid_claims %>%
+  mutate(
+    # Binary outcome: Retinal detachment diagnosis
+    Retinal_Detachment = ifelse(
+      Category == "Retinal Detachment and Defects" |
+        Response == "Retinal detachment and defects",
+      1, 0
+    ),
+    # Binary risk indicators (1 = condition present, 0 = absent)
+    has_diabetes = ifelse(grepl("Diabetes", RiskFactor, ignore.case = TRUE), 1, 0),
+    has_hypertension = ifelse(grepl("Hypertension", RiskFactor, ignore.case = TRUE), 1, 0),
+    has_major_ocular_condition = ifelse(
+      RiskFactor %in% c(
+        "Glaucoma", "Cataract", "Diabetic retinopathy",
+        "Age-related macular degeneration", "Any retinal vein occlusion"
+      ),
+      1, 0
+    )
+  ) %>%
+  # Retain only variables needed for analysis
+  select(
+    YearStart, LocationDesc, Age, Sex, RaceEthnicity,
+    has_diabetes, has_hypertension, has_major_ocular_condition,
+    Retinal_Detachment, Data_Value, Low_Confidence_limit,
+    High_Confidence_Limit, Numerator, Sample_Size
+  )
+
+cat("Variables created. Final dataset has", ncol(medicaid_claims), "columns.\n")
+
+```
+
+## Convert to Factors
+
+All categorical variables are converted to factors for proper analysis.
+
+```{r}
+medicaid_claims <- medicaid_claims %>%
+  mutate(
+    Age = factor(Age, 
+                 levels = c("0-17 years", "18-39 years", "40-64 years", "65-84 years", "85 years and older")),
+    Sex = factor(Sex),
+    RaceEthnicity = factor(RaceEthnicity),
+    has_diabetes = factor(has_diabetes, levels = c(0, 1),
+                          labels = c("No Diabetes", "Diabetes")),
+    has_hypertension = factor(has_hypertension, levels = c(0, 1),
+                              labels = c("No Hypertension", "Hypertension")),
+    has_major_ocular_condition = factor(has_major_ocular_condition, 
+                                        levels = c(0, 1),
+                                        labels = c("No Major Ocular Condition", 
+                                                   "Major Ocular Condition")),
+    Retinal_Detachment = factor(Retinal_Detachment, levels = c(0, 1),
+                                labels = c("No", "Yes"))
+  )
+
+cat("All categorical variables converted to factors.\n")
+
+```
+
+## Frequency Tables
+
+Examine the frequency distribution of all key variables.
+
+```{r}
+cat_vars <- c("Retinal_Detachment", "Age", "Sex", "RaceEthnicity",
+              "has_diabetes", "has_hypertension", "has_major_ocular_condition")
+
+for (v in cat_vars) {
+  cat("\n", strrep("=", 60), "\n")
+  cat("Frequency table for:", v, "\n")
+  cat(strrep("=", 60), "\n\n")
+  print(freq(medicaid_claims[[v]], report.nas = TRUE, order = "freq"))
+}
+```
+
+## Overall Retinal Detachment Prevalence
+
+Calculate the overall prevalence of retinal detachment in the study population.
+
+```{r}
+rd_overall <- medicaid_claims %>%
+  summarise(
+    n_total = n(),
+    n_rd = sum(Retinal_Detachment == "Yes", na.rm = TRUE),
+    prevalence_pct = (sum(Retinal_Detachment == "Yes", na.rm = TRUE) / n()) * 100
+  )
+rd_overall
+
+```
+
+## Prevalence by Age Group (Plot 1)
+
+Create a bar plot showing how retinal detachment prevalence varies by age group.
+
+```{r}
+prev_by_age <- medicaid_claims %>%
+  group_by(Age) %>%
+  summarise(
+    n = n(),
+    n_rd = sum(Retinal_Detachment == "Yes", na.rm = TRUE),
+    prevalence = (n_rd / n) * 100,
+    .groups = "drop"
+  )
+
+ggplot(prev_by_age, aes(x = Age, y = prevalence, fill = prevalence)) +
+  geom_col() +
+  scale_fill_gradient(low = "lightblue", high = "darkred") +
+  labs(
+    x = "Age Group",
+    y = "Prevalence of Retinal Detachment (%)",
+    title = "Prevalence of Retinal Detachment by Age Group",
+    subtitle = "VEHSS Medicaid MAX (2016–2019)",
+    fill = "Prevalence (%)"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
+    plot.title = element_text(face = "bold", size = 12),
+    legend.position = "right"
+  )
+```
+
+## Bivariate Cross-Tabulations
+
+Examine crude associations between each predictor and retinal detachment before multivariable adjustment.
+
+```{r}
+cat_vars <- c("Age", "Sex", "RaceEthnicity", "has_diabetes", "has_hypertension", "has_major_ocular_condition")
+
+for (v in cat_vars) {
+  cat("\n", strrep("=", 70), "\n")
+  cat("Crosstab:", v, "vs Retinal_Detachment (Row Percentages)\n")
+  cat(strrep("=", 70), "\n\n")
+  print(ctable(medicaid_claims[[v]], medicaid_claims$Retinal_Detachment, 
+               prop = "r", useNA = "no"))
+}
+
+```
+
+## Multivariable Logistic Regression Analysis
+
+## Fit the Model
+
+Fit a logistic regression model with all predictors of interest. The model includes age, sex, race/ethnicity, diabetes, hypertension, and major ocular conditions.
+
+```{r}
+logit_model <- glm(
+  Retinal_Detachment ~ Age + Sex + RaceEthnicity +
+    has_diabetes + has_hypertension + has_major_ocular_condition,
+  data = medicaid_claims,
+  family = binomial(link = "logit")
+)
+
+summary(logit_model)
+
+```
+
+## Extract Odds Ratios and 95% Confidence Intervals
+
+Calculate adjusted odds ratios with confidence intervals for all predictors.
+
+```{r}
+or_table <- exp(cbind(OR = coef(logit_model), confint(logit_model)))
+colnames(or_table) <- c("OR", "95% CI Lower", "95% CI Upper")
+
+or_df <- as.data.frame(or_table)
+or_df$Predictor <- rownames(or_df)
+or_df <- or_df[, c("Predictor", "OR", "95% CI Lower", "95% CI Upper")]
+or_df[, 2:4] <- round(or_df[, 2:4], 4)
+
+or_df
+
+
+
+```
+
+## Forest Plot of Odds Ratios (Plot 2)
+
+Create a professional forest plot showing odds ratios with confidence intervals for easy interpretation.
+
+```{r}
+or_for_plot <- or_df %>%
+  filter(Predictor != "(Intercept)" & OR > 0) %>%
+  mutate(
+    Predictor = factor(Predictor, levels = rev(Predictor)),
+    Significant = ifelse(`95% CI Lower` > 1 | `95% CI Upper` < 1, "Yes", "No")
+  )
+
+ggplot(or_for_plot, aes(x = OR, y = Predictor, color = Significant)) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(xmin = `95% CI Lower`, xmax = `95% CI Upper`), 
+                width = 0.2, linewidth = 1, orientation = "y") +
+  geom_vline(xintercept = 1, linetype = "dashed", color = "red", alpha = 0.5, linewidth = 1) +
+  scale_color_manual(values = c("Yes" = "darkblue", "No" = "gray50")) +
+  labs(
+    x = "Adjusted Odds Ratio (95% CI)",
+    y = "Predictor",
+    title = "Forest Plot: Adjusted Odds Ratios for Retinal Detachment",
+    subtitle = "Multivariable Logistic Regression Model",
+    color = "Significant\n(p < 0.05)"
+  ) +
+  scale_x_continuous(trans = "log10") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 13, face = "bold"),
+    plot.subtitle = element_text(size = 11),
+    axis.text.y = element_text(size = 10),
+    legend.position = "right"
+  )
+
+
+```
+
+## Model Diagnostics and Validation.
+
+## Check Multicollinearity (VIF)
+
+Variance Inflation Factors (VIF) test whether predictor variables are too highly correlated. Values \< 5 indicate acceptable levels of multicollinearity.
+
+```{r}
+vif_values <- vif(logit_model)
+vif_values
+
+```
+
+## Hosmer–Lemeshow Goodness-of-Fit Test
+
+This test evaluates whether the model's predicted probabilities match the observed data well. A non-significant p-value (p \> 0.05) indicates adequate fit.
+
+```{r}
+hl_test <- hoslem.test(logit_model$y, fitted(logit_model), g = 10)
+hl_test
+
+```
+
+## ROC Curve and AUC (Plot 3)
+
+The ROC (Receiver Operating Characteristic) curve and AUC (Area Under the Curve) evaluate the model's ability to discriminate between cases with and without retinal detachment. AUC \> 0.7 is generally considered acceptable.
+
+```{r}
+roc_curve <- roc(logit_model$y, fitted(logit_model))
+auc_value <- auc(roc_curve)
+auc_ci <- ci.auc(roc_curve)
+
+cat("AUC =", round(auc_value, 4), "\n")
+cat("95% CI [", round(auc_ci[1], 4), ",", round(auc_ci[3], 4), "]\n\n")
+
+plot(roc_curve, 
+     main = "ROC Curve: Retinal Detachment Prediction Model",
+     xlab = "1 - Specificity (False Positive Rate)",
+     ylab = "Sensitivity (True Positive Rate)",
+     grid = TRUE, 
+     grid.lty = 2,
+     print.auc = TRUE,
+     auc.polygon = TRUE,
+     auc.polygon.col = rgb(0.1, 0.3, 0.7, 0.3))
+
+
+
+
+```
+
+## Calibration Plot (Plot 4)
+
+The calibration plot shows whether the model's predicted probabilities match the observed prevalence. Points close to the diagonal line indicate good calibration.
+
+```{r}
+
+calib_data <- data.frame(
+  pred = fitted(logit_model),
+  obs = as.numeric(logit_model$y) - 1
+) %>%
+  mutate(decile = ntile(pred, 10)) %>%
+  group_by(decile) %>%
+  summarise(
+    mean_pred = mean(pred, na.rm = TRUE),
+    obs_rate = mean(obs, na.rm = TRUE),
+    n = n(),
+    .groups = "drop"
+  )
+
+ggplot(calib_data, aes(x = mean_pred, y = obs_rate)) +
+  geom_point(size = 4, color = "darkblue") +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red", alpha = 0.7, linewidth = 1) +
+  labs(
+    x = "Mean Predicted Probability",
+    y = "Observed Prevalence",
+    title = "Calibration Plot: Retinal Detachment Model",
+    subtitle = "Points close to the diagonal line indicate good calibration"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 13, face = "bold"),
+    plot.subtitle = element_text(size = 11),
+    aspect.ratio = 1
+  )
+
+```
+
+## Model Summary and diagnonstics tables  
+
+## Summary Statistics
+
+Compile key model performance metrics and diagnostic results.
+
+```{r}
+results_summary <- data.frame(
+  Metric = c(
+    "Total N (records)",
+    "Retinal Detachment Cases (n)",
+    "Overall Prevalence (%)",
+    "Model AUC",
+    "AUC 95% CI Lower",
+    "AUC 95% CI Upper",
+    "Hosmer–Lemeshow χ²",
+    "Hosmer–Lemeshow p-value",
+    "Max VIF"
+  ),
+  Value = c(
+    nrow(medicaid_claims),
+    sum(medicaid_claims$Retinal_Detachment == "Yes", na.rm = TRUE),
+    round(mean(medicaid_claims$Retinal_Detachment == "Yes", na.rm = TRUE) * 100, 2),
+    round(auc_value, 2),
+    round(auc_ci[1], 2),
+    round(auc_ci[3], 2),
+    round(hl_test$statistic, 2),
+    round(hl_test$p.value, 2),
+    round(max(vif_values), 2)
+  )
+)
+results_summary
+```
