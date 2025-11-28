@@ -105,7 +105,7 @@ Medicaid enrollees with complete demographic and risk factor information (n = 65
 
 The prevalence of retinal detachment varies by age group, with specific patterns emerging across the lifespan.
 
-![Prevalence of Retinal Detachment by Age Group](figures/prevalence_by_age.png)
+![Prevalence of Retinal Detachment by Age Group](https://github.com/weston-nyabeze/Medicaid-Retinal-Detachment-Analysis/blob/main/prevalence_by_age.png)
 
 **Interpretation:** The bar chart displays retinal detachment prevalence across five age categories, allowing visual comparison of risk distribution in the Medicaid population.
 
