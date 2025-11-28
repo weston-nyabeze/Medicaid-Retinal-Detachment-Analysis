@@ -170,9 +170,22 @@ The model's ability to discriminate between cases with and without retinal detac
 
 4. **Missing Data:**
    - Records excluded due to incomplete demographic or risk factor data; potential selection bias
+---     
+
+## 📄 Full Report
+
+For the complete analysis with detailed findings, methodology, and clinical implications, see:
+
+**[Risk_Factors_Retinal_Detachment_Medicaid_Enrollees_Report.pdf](https://github.com/weston-nyabeze/Medicaid-Retinal-Detachment-Analysis/blob/main/Risk_Factors_Retinal_Detachment_Medicaid_Enrollees_Report.pdf)**
+
+This 4-page comprehensive report includes:
+- Abstract and research background
+- Detailed methodology and statistical analysis
+- Key findings with results tables and visualizations
+- Clinical and public health implications
+- Limitations and conclusions
 
 ---
-
 ## Author
 
 **Weston Nyabeze**
