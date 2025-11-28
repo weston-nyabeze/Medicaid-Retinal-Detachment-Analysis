@@ -133,7 +133,7 @@ After adjusting for all predictors, the following associations were observed:
 
 The model's ability to discriminate between cases with and without retinal detachment was evaluated using the ROC curve and AUC.
 
-![ROC Curve: Retinal Detachment Prediction Model](https://github.com/weston-nyabeze/Medicaid-Retinal-Detachment-Analysis/blob/main/roc_curve.png)
+![ROC Curve](https://raw.githubusercontent.com/weston-nyabeze/Medicaid-Retinal-Detachment-Analysis/main/roc_curve.png)
 
 | Metric | Value |
 |--------|-------|
