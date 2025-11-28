@@ -187,5 +187,20 @@ The model's ability to discriminate between cases with and without retinal detac
 This project is licensed under the **MIT License**. See the [`LICENSE`](LICENSE) file for details.
 
 ---
+## Acknowledgments
+
+### Academic Institution
+- **American University** – Educational support and institutional affiliation
+
+### Data Sources
+- **Centers for Disease Control and Prevention (CDC)** – Vision and Eye Health Surveillance System (VEHSS)
+- **Medicaid Analytic eXtract (MAX) Program** – Administrative claims data access and documentation
+- **Data.gov** – [Medicaid Claims (MAX) - Vision and Eye Health Surveillance](https://catalog.data.gov/dataset/medicaid-claims-max-vision-and-eye-health-surveillance)
+
+### Tools & Assistance
+- **Perplexity AI** – Research assistance, code optimization, and analytical guidance
+- **R Ecosystem** – dplyr, ggplot2, pROC, car, and ResourceSelection packages
+
+---
 
 
